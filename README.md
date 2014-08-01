@@ -8,7 +8,7 @@ NOTE: the package uses unsafe.Pointer to set and read the bits from the bitset. 
 ===
 
 This bloom filter was developed to strengthen a website-log database and was tested and optimized for this log-entry mask: "2014/%02i/%02i %02i:%02i:%02i /info.html". 
-Nonetheless bloom should work with any other form of entries. 
+Nonetheless bbloom should work with any other form of entries. 
 
 Hash function is Berkeley DB smdb hash (slightly modified to optimize for smaller bitsets len<=4096). smdb <--- http://www.cse.yorku.ca/~oz/hash.html
 
@@ -49,7 +49,8 @@ at your header. In the program use
 // create a bloom filter for 65536 items and 1 % wrong-positive ratio 
 bf := bbloom.New(float64(1<<16), float64(0.01))
 
-// create a bloom filter with 650000 for 65536 items and 7 locs per hash
+// or 
+// create a bloom filter with 650000 for 65536 items and 7 locs per hash explicitly
 // bf = bbloom.New(float64(650000), float64(7))
 // or
 bf = bbloom.New(650000.0, 7.0)
@@ -62,7 +63,6 @@ isIn := bf.Has([]byte("butter"))    // should be true
 isNotIn := bf.Has([]byte("Butter")) // should be false
 
 // convert to JSON ([]byte) 
-// (the bitset (type []bool) is casted to []uint8 for compression)
 Json := bf.JSONMarshal()
 
 // restore a bloom filter from storage 
