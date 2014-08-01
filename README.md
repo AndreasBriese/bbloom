@@ -10,11 +10,9 @@ NOTE: the package uses unsafe.Pointer to set and read the bits from the bitset. 
 This bloom filter was developed to strengthen a website-log database and was tested and optimized for this log-entry mask: "2014/%02i/%02i %02i:%02i:%02i /info.html". 
 Nonetheless bloom should work with any other form of entries. 
 
-provides 32bit and 64bit boolsets for smaller or larger entry volumes. 
+Hash function is Berkeley DB smdb hash (slightly modified to optimize for smaller bitsets len<=4096). smdb <--- http://www.cse.yorku.ca/~oz/hash.html
 
-32bit - bloom: hash function is Berkeley DB smdb hash (slightly modified to optimize for smaller bitsets len<=4096). smdb <--- http://www.cse.yorku.ca/~oz/hash.html
-
-64bit - bloom: hash function is go's generic FNV64a hash 
+Minimum hashset size is: 512 ([4]uint64; will be set automatically). 
 
 ###install
 
@@ -25,7 +23,7 @@ go get github.com/AndreasBriese/bbloom
 ###test
 + change to folder ../bloom 
 + create wordlist in file "words.txt" (you might use `python permut.py`)
-+ run go test within the folder
++ run 'go test' within the folder
 
 ```go
 go test
@@ -75,12 +73,15 @@ to work with the bloom filter.
 
 ### why 'fast'? 
 
-It's about 3 times faster than William Fitzgeralds real bitset bloom filter https://github.com/willf/bloom . 
+It's about 3 times faster than William Fitzgeralds bitset bloom filter https://github.com/willf/bloom . And it is about so fast as my []bool set variant for Boom filters (see https://github.com/AndreasBriese/bloom ): 
 
 	
 	Bloom filter (filter size 524288, 7 hashlocs)
+	github.com/AndreasBriese/bbloom 'Add' 65536 items (10 repetitions): 6595800 ns (100 ns/op)
+    github.com/AndreasBriese/bbloom 'Has' 65536 items (10 repetitions): 5986600 ns (91 ns/op)
 	github.com/AndreasBriese/bloom 'Add' 65536 items (10 repetitions): 6304684 ns (96 ns/op)
 	github.com/AndreasBriese/bloom 'Has' 65536 items (10 repetitions): 6568663 ns (100 ns/op)
+	
 	github.com/willf/bloom 'Add' 65536 items (10 repetitions): 24367224 ns (371 ns/op)
 	github.com/willf/bloom 'Test' 65536 items (10 repetitions): 21881142 ns (333 ns/op)
 	github.com/dataence/bloom/standard 'Add' 65536 items (10 repetitions): 23041644 ns (351 ns/op)
