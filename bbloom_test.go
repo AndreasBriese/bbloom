@@ -25,8 +25,8 @@ func Test_New(t *testing.T) {
 			bf := New(float64(n), float64(locs))
 
 			Convey("bf should be {{[0 ... 0] 'ptr'} 9 511 1 55}", nil)
-			//So(fmt.Sprint(bf), ShouldEqual, "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]")
-			So(fmt.Sprintf("%v %v %v %v", bf.sizeExp, bf.size, bf.setLocs, bf.shift), ShouldEqual, "9 511 1 55")
+			// So(fmt.Sprint(bf), ShouldEqual, "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]")
+			So(fmt.Sprintf("%v %v %v %v", bf.sizeExp, bf.size, bf.setLocs, bf.shift), ShouldEqual, "9 511 1 23")
 
 			Convey("When Add([]byte('Manfred'))", func() {
 				bf.Add([]byte("Manfred"))
@@ -96,7 +96,7 @@ func Test_Timings(t *testing.T) {
 			st := time.Now()
 			repeats := int64(100)
 			for r := int64(0); r < repeats; r++ {
-				bf := New(float64(n*20), float64(3))
+				bf := New(float64(n*10), float64(7))
 				for i, _ := range wordlist1 {
 					bf.Add(wordlist1[i])
 				}
@@ -249,7 +249,7 @@ func Test_bf_Distributions(t *testing.T) {
 		Json = bl.JSONMarshal()
 	}
 	tm = time.Since(st).Nanoseconds()
-	log.Println("JSONMarshal: ", tm, "ns", tm/int64(10*65536), "ns/op")
+	log.Println("JSONMarshal: ", tm, "ns", tm/int64(10), "ns/op")
 
 	cnt = 0
 	var newbl Bloom
@@ -258,7 +258,7 @@ func Test_bf_Distributions(t *testing.T) {
 		newbl = JSONUnmarshal(Json)
 	}
 	tm = time.Since(st).Nanoseconds()
-	log.Println("JSONUnmarshal: ", tm, "ns", tm/int64(10*65536), "ns/op")
+	log.Println("JSONUnmarshal: ", tm, "ns", tm/int64(10), "ns/op")
 
 	cnt = 0
 	st = time.Now()
