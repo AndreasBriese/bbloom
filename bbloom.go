@@ -67,7 +67,7 @@ func New(params ...float64) (bloomfilter Bloom) {
 		sizeExp: exponent,
 		size:    size - 1,
 		setLocs: locs,
-		shift:   64 - exponent,
+		shift:   32 - exponent,
 	}
 	bloomfilter.Size(size)
 	return bloomfilter
@@ -77,14 +77,7 @@ func New(params ...float64) (bloomfilter Bloom) {
 // takes a []byte slice and number of locs per entry
 // returns the bloomfilter with a bitset populated according to the input []byte
 func NewWithBoolset(bs *[]byte, locs uint64) (bloomfilter Bloom) {
-	size, exponent := getSize(uint64(len(*bs) / 8))
-	bloomfilter = Bloom{
-		sizeExp: exponent,
-		size:    size - 1,
-		setLocs: locs,
-		shift:   64 - exponent,
-	}
-	bloomfilter.Size(size)
+	bloomfilter = New(float64(len(*bs)/8), float64(locs))
 	ptr := bloomfilter.bitset.start
 	for _, b := range *bs {
 		*(*uint8)(unsafe.Pointer(ptr)) = b
@@ -123,24 +116,28 @@ type Bloom struct {
 }
 
 // <--- http://www.cse.yorku.ca/~oz/hash.html
-// Berkeley DB Hash (32bit)
-// modified to fit with boolset-length
+// modified Berkeley DB Hash (32bit)
 // hash is casted to l, h = 16bit fragments
 // returns l,h
-func (bl Bloom) smdb(b []byte) (l, h uint64) {
-	hash := uint64(0)
-	for _, c := range b {
+// func (bl Bloom) hasher(b []byte) (l, h uint64) {
+// 	l, h = bl.smdb(&b)
+// 	return
+// }
+
+func (bl Bloom) absdbm(b *[]byte) (l, h uint64) {
+	hash := uint64(len(*b))
+	for _, c := range *b {
 		hash = uint64(c) + (hash << 6) + (hash << bl.sizeExp) - hash
 	}
 	h = hash >> bl.shift
-	l = hash << bl.sizeExp >> bl.shift
+	l = hash << bl.sizeExp >> bl.sizeExp
 	return l, h
 }
 
 // Add
 // set the bit(s) for entry; Adds an entry to the Bloom filter
 func (bl Bloom) Add(entry []byte) {
-	l, h := bl.smdb(entry)
+	l, h := bl.absdbm(&entry)
 	for i := uint64(0); i < bl.setLocs; i++ {
 		bl.bitset.Set((h + i*l) & bl.size)
 	}
@@ -150,7 +147,7 @@ func (bl Bloom) Add(entry []byte) {
 // check if bit(s) for entry is/are set
 // returns true if the entry was added to the Bloom Filter
 func (bl Bloom) Has(entry []byte) bool {
-	l, h := bl.smdb(entry)
+	l, h := bl.absdbm(&entry)
 	for i := uint64(0); i < bl.setLocs; i++ {
 		switch bl.bitset.IsSet((h + i*l) & bl.size) {
 		case false:
@@ -194,6 +191,9 @@ type Bitset struct {
 // Size
 // make Bloom filter with as bitset of size sz
 func (bs *Bitset) Size(sz uint64) {
+	if sz%64 > 0 {
+		sz++
+	}
 	bs.bs = make([]uint64, sz)
 	(*bs).start = uintptr(unsafe.Pointer(&bs.bs[0]))
 }
@@ -213,3 +213,27 @@ func (bs *Bitset) IsSet(idx uint64) bool {
 	r := ((*(*uint8)(ptr)) >> (idx % 8)) & 1
 	return r == 1
 }
+
+// // alternative hashFn
+// func (bl Bloom) fnv64a(b *[]byte) (l, h uint64) {
+// 	h64 := fnv.New64a()
+// 	h64.Write(*b)
+// 	hash := h64.Sum64()
+// 	h = hash >> 32
+// 	l = hash << 32 >> 32
+// 	return l, h
+// }
+//
+// // <-- http://partow.net/programming/hashfunctions/index.html
+// // citation: An algorithm proposed by Donald E. Knuth in The Art Of Computer Programming Volume 3,
+// // under the topic of sorting and search chapter 6.4.
+// // modified to fit with boolset-length
+// func (bl Bloom) DEKHash(b *[]byte) (l, h uint64) {
+// 	hash := uint64(len(*b))
+// 	for _, c := range *b {
+// 		hash = ((hash << 5) ^ (hash >> bl.shift)) ^ uint64(c)
+// 	}
+// 	h = hash >> bl.shift
+// 	l = hash << bl.sizeExp >> bl.sizeExp
+// 	return l, h
+// }
