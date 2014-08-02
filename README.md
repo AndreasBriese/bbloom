@@ -10,7 +10,7 @@ NOTE: the package uses unsafe.Pointer to set and read the bits from the bitset. 
 This bloom filter was developed to strengthen a website-log database and was tested and optimized for this log-entry mask: "2014/%02i/%02i %02i:%02i:%02i /info.html". 
 Nonetheless bbloom should work with any other form of entries. 
 
-Hash function is Berkeley DB smdb hash (slightly modified to optimize for smaller bitsets len<=4096). smdb <--- http://www.cse.yorku.ca/~oz/hash.html
+Hash function is a modified Berkeley DB sdbm hash (to optimize for smaller strings). sdbm <--- http://www.cse.yorku.ca/~oz/hash.html
 
 Minimum hashset size is: 512 ([4]uint64; will be set automatically). 
 
@@ -23,6 +23,7 @@ go get github.com/AndreasBriese/bbloom
 ###test
 + change to folder ../bloom 
 + create wordlist in file "words.txt" (you might use `go run wordlister.go `)
++ rename wordister.go to wordlister._go (or move it somewhere else outside the folder)
 + run 'go test' within the folder
 
 ```go
@@ -92,4 +93,4 @@ It's about 3 times faster than William Fitzgeralds bitset bloom filter https://g
 (on MBPro15 OSX10.8.5 i7 4Core 2.4Ghz)
 
 
-With 32bit bloom filters (bloom32) using smdb, bloom32 does hashing with only 2 bit shifts, one xor and one substraction per byte. smdb is about as fast as fnv64a but gives less collisions with the dataset (see mask above). bloom.New(float64(10 * 1<<16),float64(7)) populated with 1<<16 random items from the dataset (see above) and tested against the rest results in less than 0.05% collisions.   
+With 32bit bloom filters (bloom32) using modified sdbm, bloom32 does hashing with only 2 bit shifts, one xor and one substraction per byte. smdb is about as fast as fnv64a but gives less collisions with the dataset (see mask above). bloom.New(float64(10 * 1<<16),float64(7)) populated with 1<<16 random items from the dataset (see above) and tested against the rest results in less than 0.05% collisions.   
