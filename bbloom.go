@@ -67,7 +67,7 @@ func New(params ...float64) (bloomfilter Bloom) {
 		sizeExp: exponent,
 		size:    size - 1,
 		setLocs: locs,
-		shift:   32 - exponent,
+		shift:   math.Abs(float64(32 - exponent)),
 	}
 	bloomfilter.Size(size)
 	return bloomfilter
