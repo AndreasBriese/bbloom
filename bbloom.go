@@ -67,7 +67,7 @@ func New(params ...float64) (bloomfilter Bloom) {
 		sizeExp: exponent,
 		size:    size - 1,
 		setLocs: locs,
-		shift:   math.Abs(float64(32 - exponent)),
+		shift:   64 - exponent,
 	}
 	bloomfilter.Size(size)
 	return bloomfilter
@@ -130,7 +130,7 @@ func (bl Bloom) absdbm(b *[]byte) (l, h uint64) {
 		hash = uint64(c) + (hash << 6) + (hash << bl.sizeExp) - hash
 	}
 	h = hash >> bl.shift
-	l = hash << bl.sizeExp >> bl.sizeExp
+	l = hash << bl.shift >> bl.shift
 	return l, h
 }
 
