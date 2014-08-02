@@ -22,7 +22,7 @@ go get github.com/AndreasBriese/bbloom
 
 ###test
 + change to folder ../bloom 
-+ create wordlist in file "words.txt" (you might use `python permut.py`)
++ create wordlist in file "words.txt" (you might use `go run wordlister.go `)
 + run 'go test' within the folder
 
 ```go
