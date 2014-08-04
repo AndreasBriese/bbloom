@@ -118,26 +118,24 @@ type Bloom struct {
 // <--- http://www.cse.yorku.ca/~oz/hash.html
 // modified Berkeley DB Hash (32bit)
 // hash is casted to l, h = 16bit fragments
-// returns l,h
-// func (bl Bloom) hasher(b []byte) (l, h uint64) {
-// 	l, h = bl.smdb(&b)
-// 	return
+// func (bl Bloom) absdbm(b *[]byte) (l, h uint64) {
+// 	hash := uint64(len(*b))
+// 	for _, c := range *b {
+// 		hash = uint64(c) + (hash << 6) + (hash << bl.sizeExp) - hash
+// 	}
+// 	h = hash >> bl.shift
+// 	l = hash << bl.shift >> bl.shift
+// 	return l, h
 // }
 
-func (bl Bloom) absdbm(b *[]byte) (l, h uint64) {
-	hash := uint64(len(*b))
-	for _, c := range *b {
-		hash = uint64(c) + (hash << 6) + (hash << bl.sizeExp) - hash
-	}
-	h = hash >> bl.shift
-	l = hash << bl.shift >> bl.shift
-	return l, h
-}
+// Update: found sipHash of Jean-Philippe Aumasson & Daniel J. Bernstein to be even faster than absdbm()
+// https://131002.net/siphash/
+// siphash was implemented for Go by Dmitry Chestnykh https://github.com/dchest/siphash
 
 // Add
 // set the bit(s) for entry; Adds an entry to the Bloom filter
 func (bl Bloom) Add(entry []byte) {
-	l, h := bl.absdbm(&entry)
+	l, h := sipHash(&entry)
 	for i := uint64(0); i < bl.setLocs; i++ {
 		bl.bitset.Set((h + i*l) & bl.size)
 	}
@@ -147,7 +145,7 @@ func (bl Bloom) Add(entry []byte) {
 // check if bit(s) for entry is/are set
 // returns true if the entry was added to the Bloom Filter
 func (bl Bloom) Has(entry []byte) bool {
-	l, h := bl.absdbm(&entry)
+	l, h := sipHash(&entry)
 	for i := uint64(0); i < bl.setLocs; i++ {
 		switch bl.bitset.IsSet((h + i*l) & bl.size) {
 		case false:
