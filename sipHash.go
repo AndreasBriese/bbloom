@@ -25,11 +25,10 @@ func (bl Bloom) sipHash(p []byte) (uint64, uint64) {
 	v1 := uint64(7237128889637516672) //k1 ^ 0x646f72616e646f6d
 	v2 := uint64(7816392314733513934) //k0 ^ 0x6c7967656e657261
 	v3 := uint64(8387220255325274014) //k1 ^ 0x7465646279746573
-	l := len(p)
-	t := uint64(l) << 56
+	t := uint64(len(p)) << 56
 
 	// Compression.
-	for i := l; i >= BlockSize; i -= BlockSize {
+	for len(p) >= BlockSize {
 		m := uint64(p[0]) | uint64(p[1])<<8 | uint64(p[2])<<16 | uint64(p[3])<<24 |
 			uint64(p[4])<<32 | uint64(p[5])<<40 | uint64(p[6])<<48 | uint64(p[7])<<56
 		v3 ^= m
@@ -77,7 +76,7 @@ func (bl Bloom) sipHash(p []byte) (uint64, uint64) {
 	}
 
 	// Compress last block.
-	switch l {
+	switch len(p) {
 	case 7:
 		t |= uint64(p[6]) << 48
 		fallthrough
