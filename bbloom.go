@@ -135,7 +135,7 @@ type Bloom struct {
 // Add
 // set the bit(s) for entry; Adds an entry to the Bloom filter
 func (bl Bloom) Add(entry []byte) {
-	l, h := sipHash(entry)
+	l, h := bl.sipHash(entry)
 	for i := uint64(0); i < bl.setLocs; i++ {
 		bl.bitset.Set((h + i*l) & bl.size)
 	}
@@ -145,7 +145,7 @@ func (bl Bloom) Add(entry []byte) {
 // check if bit(s) for entry is/are set
 // returns true if the entry was added to the Bloom Filter
 func (bl Bloom) Has(entry []byte) bool {
-	l, h := sipHash(entry)
+	l, h := bl.sipHash(entry)
 	for i := uint64(0); i < bl.setLocs; i++ {
 		switch bl.bitset.IsSet((h + i*l) & bl.size) {
 		case false:
