@@ -10,7 +10,9 @@ NOTE: the package uses unsafe.Pointer to set and read the bits from the bitset. 
 This bloom filter was developed to strengthen a website-log database and was tested and optimized for this log-entry mask: "2014/%02i/%02i %02i:%02i:%02i /info.html". 
 Nonetheless bbloom should work with any other form of entries. 
 
-Hash function is a modified Berkeley DB sdbm hash (to optimize for smaller strings). sdbm <--- http://www.cse.yorku.ca/~oz/hash.html
+~~Hash function is a modified Berkeley DB sdbm hash (to optimize for smaller strings). sdbm <--- http://www.cse.yorku.ca/~oz/hash.html ~~
+
+Found sipHash (SipHash-2-4, a fast short-input PRF created by Jean-Philippe Aumasson and Daniel J. Bernstein.) to be even faster. 
 
 Minimum hashset size is: 512 ([4]uint64; will be set automatically). 
 
@@ -21,9 +23,8 @@ go get github.com/AndreasBriese/bbloom
 ```
 
 ###test
-+ change to folder ../bloom 
-+ create wordlist in file "words.txt" (you might use `go run wordlister.go `)
-+ rename wordister.go to wordlister._go (or move it somewhere else outside the folder)
++ change to folder ../bbloom 
++ create wordlist in file "words.txt" (you might use `python permut.py`)
 + run 'go test' within the folder
 
 ```go
