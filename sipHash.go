@@ -19,9 +19,8 @@ const (
 
 // Hash returns the 64-bit SipHash-2-4 of the given byte slice with two 64-bit
 // parts of 128-bit key: k0 and k1.
-func sipHash(b *[]byte) (uint64, uint64) {
+func sipHash(b []byte) (uint64, uint64) {
 	// Initialization.
-	p := *b
 	v0 := uint64(8317987320269560794) // k0 ^ 0x736f6d6570736575
 	v1 := uint64(7237128889637516672) //k1 ^ 0x646f72616e646f6d
 	v2 := uint64(7816392314733513934) //k0 ^ 0x6c7967656e657261
