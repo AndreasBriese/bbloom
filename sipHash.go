@@ -10,27 +10,22 @@
 
 package bbloom
 
-import "unsafe"
-
-const (
-	// The block size of hash algorithm in bytes.
-	BlockSize = 8
-)
-
 // Hash returns the 64-bit SipHash-2-4 of the given byte slice with two 64-bit
 // parts of 128-bit key: k0 and k1.
-func (bl Bloom) sipHash(p []byte) (uint64, uint64) {
+func (bl Bloom) sipHash(p []byte) (l, h uint64) {
 	// Initialization.
 	v0 := uint64(8317987320269560794) // k0 ^ 0x736f6d6570736575
-	v1 := uint64(7237128889637516672) //k1 ^ 0x646f72616e646f6d
-	v2 := uint64(7816392314733513934) //k0 ^ 0x6c7967656e657261
-	v3 := uint64(8387220255325274014) //k1 ^ 0x7465646279746573
+	v1 := uint64(7237128889637516672) // k1 ^ 0x646f72616e646f6d
+	v2 := uint64(7816392314733513934) // k0 ^ 0x6c7967656e657261
+	v3 := uint64(8387220255325274014) // k1 ^ 0x7465646279746573
 	t := uint64(len(p)) << 56
 
 	// Compression.
-	for len(p) >= BlockSize {
+	for len(p) >= 8 {
+
 		m := uint64(p[0]) | uint64(p[1])<<8 | uint64(p[2])<<16 | uint64(p[3])<<24 |
 			uint64(p[4])<<32 | uint64(p[5])<<40 | uint64(p[6])<<48 | uint64(p[7])<<56
+
 		v3 ^= m
 
 		// Round 1.
@@ -72,7 +67,7 @@ func (bl Bloom) sipHash(p []byte) (uint64, uint64) {
 		v2 = v2<<32 | v2>>32
 
 		v0 ^= m
-		p = p[BlockSize:]
+		p = p[8:]
 	}
 
 	// Compress last block.
@@ -222,8 +217,9 @@ func (bl Bloom) sipHash(p []byte) (uint64, uint64) {
 
 	// return v0 ^ v1 ^ v2 ^ v3
 
-	v0 ^= v1 ^ v2 ^ v3
-
-	return (uint64(*(*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(&v0)) + uintptr(4))))), uint64(*(*uint32)(unsafe.Pointer(&v0)))
+	hash := v0 ^ v1 ^ v2 ^ v3
+	h = hash >> bl.shift
+	l = hash << bl.shift >> bl.shift
+	return l, h
 
 }
