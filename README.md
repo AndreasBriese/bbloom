@@ -12,7 +12,7 @@ Nonetheless bbloom should work with any other form of entries.
 
 ~~Hash function is a modified Berkeley DB sdbm hash (to optimize for smaller strings). sdbm  http://www.cse.yorku.ca/~oz/hash.html~~
 
-Found sipHash (SipHash-2-4, a fast short-input PRF created by Jean-Philippe Aumasson and Daniel J. Bernstein.) to be even faster. 
+Found sipHash (SipHash-2-4, a fast short-input PRF created by Jean-Philippe Aumasson and Daniel J. Bernstein.) to be about as fast. sipHash had been ported by Dimtry Chestnyk to Go (github.com/dchest/siphash )
 
 Minimum hashset size is: 512 ([4]uint64; will be set automatically). 
 
