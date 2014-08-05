@@ -46,7 +46,7 @@ func Test_New(t *testing.T) {
 
 func Test_JSONMarschal_JSONUnmarshal(t *testing.T) {
 
-	Convey("When created bf(64,1) and populated with 65536 words and bf.JSONMarshal", t, func() {
+	Convey("When created bf(10*2**16,7) and populated with 65536 words and bf.JSONMarshal", t, func() {
 		n := 1 << 16
 		bf := New(float64(n*10), float64(7))
 
@@ -105,7 +105,7 @@ func Test_Timings(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		Convey("When created bf(n*20,3): Time to populate with n words", func() {
+		Convey("When created bf(10* 2**16,7): Time to populate with n words", func() {
 			st := time.Now()
 			repeats := int64(100)
 			for r := int64(0); r < repeats; r++ {
@@ -115,7 +115,7 @@ func Test_Timings(t *testing.T) {
 				}
 			}
 			tm := time.Since(st).Nanoseconds()
-			fmt.Printf("Create bloom filter (n*20,3) and 'Add' n=%v items to bloom filter (%v repetitions): %v ns (%v ns/op)\n", n, repeats, tm/repeats, tm/(int64(n)*repeats))
+			fmt.Printf("Create bloom filter bf(10* 2**16,7) and 'Add' n=%v items to bloom filter (%v repetitions): %v ns (%v ns/op)\n", n, repeats, tm/repeats, tm/(int64(n)*repeats))
 		})
 		Convey("Time to check n words", func() {
 			st := time.Now()
@@ -142,7 +142,7 @@ func Test_Timings(t *testing.T) {
 }
 
 func Test_bf_Distributions(t *testing.T) {
-	Convey("Test for wrong positivs in bf if there're 3 fields for each loc: len(bf)=9*2<<16, 3 Locs/entry. wordlist length = 2<<16 ", t, func() {
+	Convey("Test for wrong positivs in bf bf(65536.0, 0.1..0.000001)", t, func() {
 		n := 1 << 16
 		file, err := os.Open("words.txt")
 		if err != nil {
