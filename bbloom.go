@@ -77,7 +77,7 @@ func New(params ...float64) (bloomfilter Bloom) {
 // takes a []byte slice and number of locs per entry
 // returns the bloomfilter with a bitset populated according to the input []byte
 func NewWithBoolset(bs *[]byte, locs uint64) (bloomfilter Bloom) {
-	bloomfilter = New(float64(len(*bs)/8), float64(locs))
+	bloomfilter = New(float64(8*len(*bs)), float64(locs))
 	ptr := bloomfilter.bitset.start
 	for _, b := range *bs {
 		*(*uint8)(unsafe.Pointer(ptr)) = b
@@ -158,7 +158,13 @@ func (bl Bloom) Has(entry []byte) bool {
 // Size
 // make Bloom filter with as bitset of size sz
 func (bl *Bloom) Size(sz uint64) {
-	bl.bitset.Size(sz)
+	(*bl).bitset.Size(sz)
+}
+
+// Clear
+// resets the Bloom filter
+func (bl *Bloom) Clear() {
+	(*bl).bitset.Clear()
 }
 
 // JSONMarshal
@@ -166,7 +172,7 @@ func (bl *Bloom) Size(sz uint64) {
 func (bl Bloom) JSONMarshal() []byte {
 	bloomImEx := bloomJSONImExport{}
 	bloomImEx.SetLocs = uint64(bl.setLocs)
-	bloomImEx.FilterSet = make([]byte, 8*len(bl.bitset.bs))
+	bloomImEx.FilterSet = make([]byte, len(bl.bitset.bs)*8)
 	ptr := bl.bitset.start
 	for i := range bloomImEx.FilterSet {
 		bloomImEx.FilterSet[i] = *(*byte)(unsafe.Pointer(ptr))
@@ -189,10 +195,7 @@ type Bitset struct {
 // Size
 // make Bloom filter with as bitset of size sz
 func (bs *Bitset) Size(sz uint64) {
-	if sz%64 > 0 {
-		sz++
-	}
-	bs.bs = make([]uint64, sz)
+	(*bs).bs = make([]uint64, sz>>6)
 	(*bs).start = uintptr(unsafe.Pointer(&bs.bs[0]))
 }
 
@@ -201,6 +204,14 @@ func (bs *Bitset) Size(sz uint64) {
 func (bs *Bitset) Set(idx uint64) {
 	ptr := unsafe.Pointer(bs.start + uintptr(idx>>3))
 	*(*uint8)(ptr) |= mask[idx%8]
+}
+
+// Clear
+// resets the bitset
+func (bs *Bitset) Clear() {
+	for i, _ := range (*bs).bs {
+		(*bs).bs[i] = 0
+	}
 }
 
 // IsSet
