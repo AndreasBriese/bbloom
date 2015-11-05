@@ -7,7 +7,7 @@ NOTE: the package uses unsafe.Pointer to set and read the bits from the bitset. 
 
 ===
 
-changelog 11/2015: new thread safe methods AddTs(), HasTs(), AddIfNotHasTS() following a suggestion from Srdjan Marinovic, who used this to code a bloomfilter cache.  
+changelog 11/2015: new thread safe methods AddTS(), HasTS(), AddIfNotHasTS() following a suggestion from Srdjan Marinovic (github @a-little-srdjan), who used this to code a bloomfilter cache.  
 
 This bloom filter was developed to strengthen a website-log database and was tested and optimized for this log-entry mask: "2014/%02i/%02i %02i:%02i:%02i /info.html". 
 Nonetheless bbloom should work with any other form of entries. 
@@ -72,7 +72,7 @@ isNotIn := bf.Has([]byte("Butter")) // should be false
 added := bf.AddIfNotHas([]byte("butter"))    // should be false because 'butter' is already in the set
 added = bf.AddIfNotHas([]byte("buTTer"))    // should be true because 'buTTer' is new
 
-// thread safe versions for concurrent use: AddTZ, HasTS, AddIfNotHasTS
+// thread safe versions for concurrent use: AddTS, HasTS, AddIfNotHasTS
 // add one item
 bf.AddTS([]byte("peanutbutter"))
 // check if item is in the filter
