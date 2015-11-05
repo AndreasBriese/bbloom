@@ -74,10 +74,10 @@ added = bf.AddIfNotHas([]byte("buTTer"))    // should be true because 'buTTer' i
 // add one item
 bf.AddTS([]byte("peanutbutter"))
 // check if item is in the filter
-isIn := bf.HasTS([]byte("peanutbutter"))    // should be true
-isNotIn := bf.HasTS([]byte("peanutButter")) // should be false
+isIn = bf.HasTS([]byte("peanutbutter"))    // should be true
+isNotIn = bf.HasTS([]byte("peanutButter")) // should be false
 // 'add only if item is new' to the bloomfilter
-added := bf.AddIfNotHasTS([]byte("butter"))    // should be false because 'peanutbutter' is already in the set
+added = bf.AddIfNotHasTS([]byte("butter"))    // should be false because 'peanutbutter' is already in the set
 added = bf.AddIfNotHasTS([]byte("peanutbuTTer"))    // should be true because 'penutbuTTer' is new
 
 // convert to JSON ([]byte) 
