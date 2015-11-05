@@ -7,6 +7,8 @@ NOTE: the package uses unsafe.Pointer to set and read the bits from the bitset. 
 
 ===
 
+changelog 11/2015: new thread safe methods AddTs(), HasTs(), AddIfNotHasTS() following a suggestion from Srdjan Marinovic, who used this to code a bloomfilter cache.  
+
 This bloom filter was developed to strengthen a website-log database and was tested and optimized for this log-entry mask: "2014/%02i/%02i %02i:%02i:%02i /info.html". 
 Nonetheless bbloom should work with any other form of entries. 
 
@@ -90,7 +92,11 @@ Json = bf.JSONMarshal()
 bf.Mtx.Unlock()
 
 // restore a bloom filter from storage 
-bf = bbloom.JSONUnmarshal(Json)
+bfNew := bbloom.JSONUnmarshal(Json)
+
+isIn := bfNew.Has([]byte("butter"))    // should be true
+isNotIn := bfNew.Has([]byte("Butter")) // should be false
+
 ```
 
 to work with the bloom filter.
