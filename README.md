@@ -90,7 +90,7 @@ Json = bf.JSONMarshal()
 bf.Mtx.Unlock()
 
 // restore a bloom filter from storage 
-bf = JSONUnmarshal(Json)
+bf = bbloom.JSONUnmarshal(Json)
 ```
 
 to work with the bloom filter.
