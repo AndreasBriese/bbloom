@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"log"
 	"math"
+	"sync"
 	"unsafe"
 )
 
@@ -108,6 +109,7 @@ func JSONUnmarshal(dbData []byte) Bloom {
 //
 // Bloom filter
 type Bloom struct {
+	Mtx     sync.Mutex
 	bitset  Bitset
 	sizeExp uint64
 	size    uint64
@@ -141,6 +143,14 @@ func (bl Bloom) Add(entry []byte) {
 	}
 }
 
+// AddTS
+// Thread safe: Mutex.Lock the bloomfilter for the time of processing the entry
+func (bl *Bloom) AddTS(entry []byte) {
+	bl.Mtx.Lock()
+	defer bl.Mtx.Unlock()
+	bl.Add(entry[:])
+}
+
 // Has
 // check if bit(s) for entry is/are set
 // returns true if the entry was added to the Bloom Filter
@@ -153,6 +163,36 @@ func (bl Bloom) Has(entry []byte) bool {
 		}
 	}
 	return true
+}
+
+// HasTS
+// Thread safe: Mutex.Lock the bloomfilter for the time of processing the entry
+func (bl *Bloom) HasTS(entry []byte) bool {
+	bl.Mtx.Lock()
+	defer bl.Mtx.Unlock()
+	return bl.Has(entry[:])
+}
+
+// AddIfNotHas
+// Only Add entry if it's not present in the bloomfilter
+// returns true if entry was added
+// returns false if entry was allready registered in the bloomfilter
+func (bl Bloom) AddIfNotHas(entry []byte) (added bool) {
+	if bl.Has(entry[:]) {
+		return added
+	}
+	bl.Add(entry[:])
+	return true
+}
+
+// AddIfNotHasTS
+// Tread safe: Only Add entry if it's not present in the bloomfilter
+// returns true if entry was added
+// returns false if entry was allready registered in the bloomfilter
+func (bl *Bloom) AddIfNotHasTS(entry []byte) (added bool) {
+	bl.Mtx.Lock()
+	defer bl.Mtx.Unlock()
+	return bl.AddIfNotHas(entry[:])
 }
 
 // Size
