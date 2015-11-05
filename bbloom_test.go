@@ -2,355 +2,193 @@ package bbloom
 
 import (
 	"bufio"
-	// "bytes"
-	// "encoding/json"
 	"fmt"
-	// "hash"
-	// "hash/crc64"
-	// "hash/fnv"
-	. "github.com/smartystreets/goconvey/convey"
 	"log"
 	"os"
 	"testing"
-	"time"
 )
 
-func Test_New(t *testing.T) {
+var (
+	wordlist1 [][]byte
+	n         = 1 << 16
+	bf        Bloom
+)
 
-	Convey("Given n = 512, location/hashs = 1", t, func() {
-		n := 512
-		locs := 1
+func TestMain(m *testing.M) {
+	file, err := os.Open("words.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	wordlist1 = make([][]byte, n)
+	for i, _ := range wordlist1 {
+		if scanner.Scan() {
+			wordlist1[i] = []byte(scanner.Text())
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("\n###############\nbbloom_test.go")
+	fmt.Println("Benchmarks relate to 2**16 OP. --> output/65536 op/ns\n###############\n")
 
-		Convey("When created bf", func() {
-			bf := New(float64(n), float64(locs))
-
-			Convey("bf should be {{[0 ... 0] 'ptr'} 9 511 1 55}", nil)
-			// So(fmt.Sprint(bf), ShouldEqual, "[0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]")
-			So(fmt.Sprintf("%v %v %v %v", bf.sizeExp, bf.size, bf.setLocs, bf.shift), ShouldEqual, "9 511 1 55")
-
-			Convey("When Add([]byte('Manfred'))", func() {
-				bf.Add([]byte("Manfred"))
-
-				Convey("Has([]byte('Manfred') is true", nil)
-				So(bf.Has([]byte("Manfred")), ShouldBeTrue)
-
-				Convey("Has([]byte('manfred') is false", nil)
-				So(bf.Has([]byte("manfred")), ShouldBeFalse)
-			})
-
-		})
-
-	})
+	m.Run()
 
 }
 
-func Test_JSONMarschal_JSONUnmarshal(t *testing.T) {
+func TestM_NumberOfWrongs(t *testing.T) {
+	bf = New(float64(n*10), float64(7))
 
-	Convey("When created bf(10*2**16,7) and populated with 65536 words and bf.JSONMarshal", t, func() {
-		n := 1 << 16
-		bf := New(float64(n*10), float64(7))
-
-		file, err := os.Open("words.txt")
-		if err != nil {
-			log.Fatal(err)
+	cnt := 0
+	for i, _ := range wordlist1 {
+		if !bf.AddIfNotHas(wordlist1[i]) {
+			cnt++
 		}
-		defer file.Close()
-		scanner := bufio.NewScanner(file)
-		wordlist1 := make([][]byte, n)
-		for i, _ := range wordlist1 {
-			if scanner.Scan() {
-				wordlist1[i] = []byte(scanner.Text())
-			}
-		}
-		if err := scanner.Err(); err != nil {
-			log.Fatal(err)
-		}
-		for _, w := range wordlist1 {
-			bf.Add(w)
-		}
-		Json := bf.JSONMarshal()
-
-		Convey("bf.JSONMarschal() should be equal to JSONUnmarshal(bf.JSONMarschal())", nil)
-		nbf := JSONUnmarshal(Json)
-		cnt := 0
-		for _, w := range wordlist1 {
-			if !nbf.Has(w) {
-				cnt++
-			}
-		}
-		So(cnt, ShouldEqual, 0)
-	})
+	}
+	fmt.Printf("Bloomfilter New(7* 2**16, 7) (-> size=%v bit): \n            Check for 'false positives': %v wrong positive 'Has' results on 2**16 entries => %v %%\n", len(bf.bitset.bs)<<6, cnt, float64(cnt)/float64(n))
 
 }
 
-func Test_Timings(t *testing.T) {
+func ExampleM_NewAddHasAddIfNotHas() {
+	bf := New(float64(512), float64(1))
 
-	Convey("When created bf(10* 2**16, 7) populated with 2**16 words", t, func() {
-		n := 1 << 16
-		bf := New(float64(n*10), float64(7))
+	fmt.Printf("%v %v %v %v\n", bf.sizeExp, bf.size, bf.setLocs, bf.shift)
 
-		file, err := os.Open("words.txt")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer file.Close()
-		scanner := bufio.NewScanner(file)
-		wordlist1 := make([][]byte, n)
+	bf.Add([]byte("Manfred"))
+	fmt.Println("bf.Add([]byte(\"Manfred\"))")
+	fmt.Printf("bf.Has([]byte(\"Manfred\")) -> %v - should be true\n", bf.Has([]byte("Manfred")))
+	fmt.Printf("bf.Add([]byte(\"manfred\")) -> %v - should be false\n", bf.Has([]byte("manfred")))
+	fmt.Printf("bf.AddIfNotHas([]byte(\"Manfred\")) -> %v - should be false\n", bf.AddIfNotHas([]byte("Manfred")))
+	fmt.Printf("bf.AddIfNotHas([]byte(\"manfred\")) -> %v - should be true\n", bf.AddIfNotHas([]byte("manfred")))
+
+	bf.AddTS([]byte("Hans"))
+	fmt.Println("bf.AddTS([]byte(\"Hans\")")
+	fmt.Printf("bf.HasTS([]byte(\"Hans\")) -> %v - should be true\n", bf.HasTS([]byte("Hans")))
+	fmt.Printf("bf.AddTS([]byte(\"hans\")) -> %v - should be false\n", bf.HasTS([]byte("hans")))
+	fmt.Printf("bf.AddIfNotHasTS([]byte(\"Hans\")) -> %v - should be false\n", bf.AddIfNotHasTS([]byte("Hans")))
+	fmt.Printf("bf.AddIfNotHasTS([]byte(\"hans\")) -> %v - should be true\n", bf.AddIfNotHasTS([]byte("hans")))
+
+	// Output: 9 511 1 55
+	// bf.Add([]byte("Manfred"))
+	// bf.Has([]byte("Manfred")) -> true - should be true
+	// bf.Add([]byte("manfred")) -> false - should be false
+	// bf.AddIfNotHas([]byte("Manfred")) -> false - should be false
+	// bf.AddIfNotHas([]byte("manfred")) -> true - should be true
+	// bf.AddTS([]byte("Hans")
+	// bf.HasTS([]byte("Hans")) -> true - should be true
+	// bf.AddTS([]byte("hans")) -> false - should be false
+	// bf.AddIfNotHasTS([]byte("Hans")) -> false - should be false
+	// bf.AddIfNotHasTS([]byte("hans")) -> true - should be true
+}
+
+func BenchmarkM_New(b *testing.B) {
+	for r := 0; r < b.N; r++ {
+		_ = New(float64(n*10), float64(7))
+	}
+}
+
+func BenchmarkM_Clear(b *testing.B) {
+	bf = New(float64(n*10), float64(7))
+	for i, _ := range wordlist1 {
+		bf.Add(wordlist1[i])
+	}
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
+		bf.Clear()
+	}
+}
+
+func BenchmarkM_Add(b *testing.B) {
+	bf = New(float64(n*10), float64(7))
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
 		for i, _ := range wordlist1 {
-			if scanner.Scan() {
-				wordlist1[i] = []byte(scanner.Text())
-			}
+			bf.Add(wordlist1[i])
 		}
-		if err := scanner.Err(); err != nil {
-			log.Fatal(err)
-		}
-
-		Convey("When created bf(10* 2**16,7): Time to populate with n words", func() {
-			st := time.Now()
-			repeats := int64(100)
-			for r := int64(0); r < repeats; r++ {
-				bf := New(float64(n*10), float64(7))
-				for i, _ := range wordlist1 {
-					bf.Add(wordlist1[i])
-				}
-			}
-			tm := time.Since(st).Nanoseconds()
-			fmt.Printf("Create bloom filter bf(10* 2**16,7) and 'Add' n=%v items to bloom filter (%v repetitions): %v ns (%v ns/op)\n", n, repeats, tm/repeats, tm/(int64(n)*repeats))
-		})
-		Convey("Time to check n words", func() {
-			st := time.Now()
-			repeats := int64(100)
-			for r := int64(0); r < repeats; r++ {
-				for i, _ := range wordlist1 {
-					bf.Has(wordlist1[i])
-				}
-			}
-			tm := time.Since(st).Nanoseconds()
-			fmt.Printf("Bloom filter 'Has' %v items (%v repetitions): %v ns (%v ns/op)\n", n, repeats, tm/repeats, tm/(int64(n)*repeats))
-		})
-		Convey("Time to JSONMarshal bloom filter", func() {
-			st := time.Now()
-			repeats := int64(20)
-			for r := int64(0); r < repeats; r++ {
-				_ = bf.JSONMarshal()
-			}
-			tm := time.Since(st).Seconds()
-			fmt.Printf("JSONMarshal %v times: %v s (%v s/op)", repeats, tm, tm/float64(repeats))
-		})
-	})
+	}
 
 }
 
-func Test_bf_Distributions(t *testing.T) {
-	Convey("Test for wrong positivs in bf bf(65536.0, 0.1..0.000001)", t, func() {
-		n := 1 << 16
-		file, err := os.Open("words.txt")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer file.Close()
-
-		scanner := bufio.NewScanner(file)
-		wordlist1 := make([][]byte, n)
+func BenchmarkM_Has(b *testing.B) {
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
 		for i, _ := range wordlist1 {
-			if scanner.Scan() {
-				wordlist1[i] = []byte(scanner.Text())
-			}
+			bf.Has(wordlist1[i])
 		}
-		if err := scanner.Err(); err != nil {
-			log.Fatal(err)
+	}
+
+}
+
+func BenchmarkM_AddIfNotHasFALSE(b *testing.B) {
+	bf = New(float64(n*10), float64(7))
+	for i, _ := range wordlist1 {
+		bf.Has(wordlist1[i])
+	}
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
+		for i, _ := range wordlist1 {
+			bf.AddIfNotHas(wordlist1[i])
 		}
+	}
+}
 
-		Convey("Test different false positive returns: bf(65536.0, 0.1..0.000001) populated with wordlist1, wordlist2!= wordlist1 false positive < 0.1...0.000001", func() {
-			for i := 0.1; i > 0.000001; i /= 10 {
-				n = 1 << 16
-				bf := New(float64(n), float64(i))
+func BenchmarkM_AddIfNotHasClearTRUE(b *testing.B) {
+	bf = New(float64(n*10), float64(7))
 
-				for _, w := range wordlist1 {
-					bf.Add(w)
-				}
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
+		for i, _ := range wordlist1 {
+			bf.AddIfNotHas(wordlist1[i])
+		}
+		bf.Clear()
+	}
+}
 
-				Convey("bf.Has(word) should be positiv for all words in wordlist1", nil)
-				notIn := 0
-				for _, w := range wordlist1 {
-					if !bf.Has(w) {
-						notIn++
-					}
-				}
+func BenchmarkM_AddTS(b *testing.B) {
+	bf = New(float64(n*10), float64(7))
 
-				So(notIn, ShouldEqual, 0)
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
+		for i, _ := range wordlist1 {
+			bf.AddTS(wordlist1[i])
+		}
+	}
 
-				Convey("Wrong positivs < 0.1%: bf.Has(word) should be negativ for more than 99.9% of words not in wordlist1", nil)
+}
 
-				file, err := os.Open("words.txt")
-				if err != nil {
-					log.Fatal(err)
-				}
-				defer file.Close()
+func BenchmarkM_HasTS(b *testing.B) {
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
+		for i, _ := range wordlist1 {
+			bf.HasTS(wordlist1[i])
+		}
+	}
 
-				cnt := 0
-				wrongIn := 0
-				scanner := bufio.NewScanner(file)
-				for i := 0; i < n; i++ {
-					if scanner.Scan() {
-						_ = []byte(scanner.Text())
-					}
-				}
-				for scanner.Scan() {
-					if bf.Has([]byte(scanner.Text())) {
-						wrongIn++
-					}
-					cnt++
-				}
-				if err := scanner.Err(); err != nil {
-					log.Fatal(err)
-				}
+}
 
-				So(i, ShouldBeGreaterThan, float64(wrongIn)/float64(cnt))
-			}
-		})
+func BenchmarkM_AddIfNotHasTSFALSE(b *testing.B) {
+	bf = New(float64(n*10), float64(7))
+	for i, _ := range wordlist1 {
+		bf.Has(wordlist1[i])
+	}
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
+		for i, _ := range wordlist1 {
+			bf.AddIfNotHasTS(wordlist1[i])
+		}
+	}
+}
 
-	})
+func BenchmarkM_AddIfNotHasTSClearTRUE(b *testing.B) {
+	bf = New(float64(n*10), float64(7))
 
-	// wordlist := make([][]byte, 1<<16)
-	// for i := range wordlist {
-	// 	wordlist[i] = []byte(fmt.Sprintf("2014/08/01 %v %v", time.Now().Nanosecond(), i))
-	// }
-	// log.Println(string(wordlist[0]))
-
-	// bl := New(64.0, 1.0)
-	// st := time.Now()
-	// for r := 0; r < 100; r++ {
-	// 	bl = New(65536.0, 0.01)
-	// 	for i := range wordlist {
-	// 		bl.Add(wordlist[i])
-	// 	}
-	// }
-	// tm := time.Since(st).Nanoseconds()
-	// log.Println("Add", tm, "ns", tm/int64(100*65536), "ns/op")
-
-	// st = time.Now()
-	// for r := 0; r < 100; r++ {
-	// 	for i := range wordlist {
-	// 		bl.Has(wordlist[i])
-	// 	}
-	// }
-	// tm = time.Since(st).Nanoseconds()
-	// log.Println("Has", tm, "ns", tm/int64(100*65536), "ns/op")
-
-	// cnt := 0
-	// st = time.Now()
-	// for r := 0; r < 100; r++ {
-	// 	for i := range wordlist {
-	// 		if !bl.Has(wordlist[i]) {
-	// 			cnt++
-	// 		}
-	// 	}
-	// }
-	// tm = time.Since(st).Nanoseconds()
-	// log.Println("Has failed: ", cnt, " -- ", tm, "ns", tm/int64(100*65536), "ns/op")
-
-	// cnt = 0
-	// var Json []byte
-	// st = time.Now()
-	// for r := 0; r < 10; r++ {
-	// 	Json = bl.JSONMarshal()
-	// }
-	// tm = time.Since(st).Nanoseconds()
-	// log.Println("JSONMarshal: ", tm, "ns", tm/int64(10), "ns/op")
-
-	// cnt = 0
-	// var newbl Bloom
-	// st = time.Now()
-	// for r := 0; r < 10; r++ {
-	// 	newbl = JSONUnmarshal(Json)
-	// }
-	// tm = time.Since(st).Nanoseconds()
-	// log.Println("JSONUnmarshal: ", tm, "ns", tm/int64(10), "ns/op")
-
-	// cnt = 0
-	// st = time.Now()
-	// for r := 0; r < 100; r++ {
-	// 	for i := range wordlist {
-	// 		if !newbl.Has(wordlist[i]) {
-	// 			cnt++
-	// 		}
-	// 	}
-	// }
-	// tm = time.Since(st).Nanoseconds()
-	// log.Println("newbl.Has failed: ", cnt, " -- ", tm, "ns", tm/int64(100*65536), "ns/op")
-
-	// for i := range wordlist {
-	// 	wordlist[i] = []byte(fmt.Sprintf("2014/08/01 %v 0%v", time.Now().Nanosecond(), i))
-	// }
-	// log.Println(string(wordlist[0]))
-
-	// cnt = 0
-	// st = time.Now()
-	// for r := 0; r < 100; r++ {
-	// 	for i := range wordlist {
-	// 		if bl.Has(wordlist[i]) {
-	// 			cnt++
-	// 		}
-	// 	}
-	// }
-	// tm = time.Since(st).Nanoseconds()
-	// log.Println("Wrong positives: ", cnt, " -- ", tm, "ns", tm/int64(100*65536), "ns/op")
-
-	// log.Println("--------------- test with bloom (bool bloom filter) below ---------------------------------------------\n")
-	// import "github.com/AndreasBriese/bloom"
-	// for i := range wordlist {
-	// 	wordlist[i] = []byte(fmt.Sprintf("2014/08/01 %v %v", time.Now().Nanosecond(), i))
-	// }
-	// log.Println(string(wordlist[0]))
-
-	// bf := bloom.New(64.0, 1.0)
-	// st = time.Now()
-	// for r := 0; r < 100; r++ {
-	// 	bf = bloom.New(65536.0, 0.01)
-	// 	for i := range wordlist {
-	// 		bf.Add(wordlist[i])
-	// 	}
-	// }
-	// tm = time.Since(st).Nanoseconds()
-	// log.Println("Add", tm, "ns", tm/int64(100*65536), "ns/op")
-
-	// st = time.Now()
-	// for r := 0; r < 100; r++ {
-	// 	for i := range wordlist {
-	// 		bf.Has(wordlist[i])
-	// 	}
-	// }
-	// tm = time.Since(st).Nanoseconds()
-	// log.Println("Has", tm, "ns", tm/int64(100*65536), "ns/op")
-
-	// cnt = 0
-	// st = time.Now()
-	// for r := 0; r < 100; r++ {
-	// 	for i := range wordlist {
-	// 		if !bf.Has(wordlist[i]) {
-	// 			cnt++
-	// 		}
-	// 	}
-	// }
-	// tm = time.Since(st).Nanoseconds()
-	// log.Println("Has failed: ", cnt, " -- ", tm, "ns", tm/int64(100*65536), "ns/op")
-
-	// for i := range wordlist {
-	// 	wordlist[i] = []byte(fmt.Sprintf("2014/08/01 %v 0%v", time.Now().Nanosecond(), i))
-	// }
-	// log.Println(string(wordlist[0]))
-
-	// cnt = 0
-	// st = time.Now()
-	// for r := 0; r < 100; r++ {
-	// 	for i := range wordlist {
-	// 		if bf.Has(wordlist[i]) {
-	// 			cnt++
-	// 		}
-	// 	}
-	// }
-	// tm = time.Since(st).Nanoseconds()
-	// log.Println("Wrong positives: ", cnt, " -- ", tm, "ns", tm/int64(100*65536), "ns/op")
+	b.ResetTimer()
+	for r := 0; r < b.N; r++ {
+		for i, _ := range wordlist1 {
+			bf.AddIfNotHasTS(wordlist1[i])
+		}
+		bf.Clear()
+	}
 
 }
