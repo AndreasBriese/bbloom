@@ -25,13 +25,15 @@ go get github.com/AndreasBriese/bbloom
 ###test
 + change to folder ../bbloom 
 + create wordlist in file "words.txt" (you might use `python permut.py`)
-+ run 'go test' within the folder
++ run 'go test -bench=.' within the folder
 
 ```go
-go test
+go test -bench=.
 ```
 
-If you've installed the GOCONVEY TDD-framework http://goconvey.co/ you can run the tests automatically.
+~~If you've installed the GOCONVEY TDD-framework http://goconvey.co/ you can run the tests automatically.~~
+
+using go's testing framework now (have in mind that the op timing is related to 65536 operations of Add, Has, AddIfNotHas respectively)
 
 ### usage
 
@@ -64,8 +66,28 @@ bf.Add([]byte("butter"))
 isIn := bf.Has([]byte("butter"))    // should be true
 isNotIn := bf.Has([]byte("Butter")) // should be false
 
+// 'add only if item is new' to the bloomfilter
+added := bf.AddIfNotHas([]byte("butter"))    // should be false because 'butter' is already in the set
+added = bf.AddIfNotHas([]byte("buTTer"))    // should be true because 'buTTer' is new
+
+// thread safe versions for concurrent use: AddTZ, HasTS, AddIfNotHasTS
+// add one item
+bf.AddTS([]byte("peanutbutter"))
+// check if item is in the filter
+isIn := bf.HasTS([]byte("peanutbutter"))    // should be true
+isNotIn := bf.HasTS([]byte("peanutButter")) // should be false
+// 'add only if item is new' to the bloomfilter
+added := bf.AddIfNotHasTS([]byte("butter"))    // should be false because 'peanutbutter' is already in the set
+added = bf.AddIfNotHasTS([]byte("peanutbuTTer"))    // should be true because 'penutbuTTer' is new
+
 // convert to JSON ([]byte) 
 Json := bf.JSONMarshal()
+
+// bloomfilters Mutex is exposed for external un-/locking
+// i.e. mutex lock while doing JSON conversion
+bf.Mtx.Lock()
+Json = bf.JSONMarshal()
+bf.Mtx.Unlock()
 
 // restore a bloom filter from storage 
 bf = JSONUnmarshal(Json)
@@ -75,7 +97,7 @@ to work with the bloom filter.
 
 ### why 'fast'? 
 
-It's about 3 times faster than William Fitzgeralds bitset bloom filter https://github.com/willf/bloom . And it is about so fast as my []bool set variant for Boom filters (see https://github.com/AndreasBriese/bloom ): 
+It's about 3 times faster than William Fitzgeralds bitset bloom filter https://github.com/willf/bloom . And it is about so fast as my []bool set variant for Boom filters (see https://github.com/AndreasBriese/bloom ) but having a 8times smaller memory footprint: 
 
 	
 	Bloom filter (filter size 524288, 7 hashlocs)
