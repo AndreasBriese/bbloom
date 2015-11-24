@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
 	wordlist1 = make([][]byte, n)
-	for i, _ := range wordlist1 {
+	for i := range wordlist1 {
 		if scanner.Scan() {
 			wordlist1[i] = []byte(scanner.Text())
 		}
@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 	fmt.Println("\n###############\nbbloom_test.go")
-	fmt.Println("Benchmarks relate to 2**16 OP. --> output/65536 op/ns\n###############\n")
+	fmt.Print("Benchmarks relate to 2**16 OP. --> output/65536 op/ns\n###############\n\n")
 
 	m.Run()
 
@@ -41,12 +41,42 @@ func TestM_NumberOfWrongs(t *testing.T) {
 	bf = New(float64(n*10), float64(7))
 
 	cnt := 0
-	for i, _ := range wordlist1 {
+	for i := range wordlist1 {
 		if !bf.AddIfNotHas(wordlist1[i]) {
 			cnt++
 		}
 	}
-	fmt.Printf("Bloomfilter New(7* 2**16, 7) (-> size=%v bit): \n            Check for 'false positives': %v wrong positive 'Has' results on 2**16 entries => %v %%\n", len(bf.bitset.bs)<<6, cnt, float64(cnt)/float64(n))
+	fmt.Printf("Bloomfilter New(7* 2**16, 7) (-> size=%v bit): \n            Check for 'false positives': %v wrong positive 'Has' results on 2**16 entries => %v %%\n", len(bf.bitset)<<6, cnt, float64(cnt)/float64(n))
+
+}
+
+func TestM_JSON(t *testing.T) {
+	const shallBe = int(1 << 16)
+
+	bf = New(float64(n*10), float64(7))
+
+	cnt := 0
+	for i := range wordlist1 {
+		if !bf.AddIfNotHas(wordlist1[i]) {
+			cnt++
+		}
+	}
+
+	Json := bf.JSONMarshal()
+
+	// create new bloomfilter from bloomfilter's JSON representation
+	bf2 := JSONUnmarshal(Json)
+
+	cnt2 := 0
+	for i := range wordlist1 {
+		if !bf2.AddIfNotHas(wordlist1[i]) {
+			cnt2++
+		}
+	}
+
+	if cnt2 != shallBe {
+		t.Errorf("FAILED !AddIfNotHas = %v; want %v", cnt2, shallBe)
+	}
 
 }
 
@@ -90,7 +120,7 @@ func BenchmarkM_New(b *testing.B) {
 
 func BenchmarkM_Clear(b *testing.B) {
 	bf = New(float64(n*10), float64(7))
-	for i, _ := range wordlist1 {
+	for i := range wordlist1 {
 		bf.Add(wordlist1[i])
 	}
 	b.ResetTimer()
@@ -103,7 +133,7 @@ func BenchmarkM_Add(b *testing.B) {
 	bf = New(float64(n*10), float64(7))
 	b.ResetTimer()
 	for r := 0; r < b.N; r++ {
-		for i, _ := range wordlist1 {
+		for i := range wordlist1 {
 			bf.Add(wordlist1[i])
 		}
 	}
@@ -113,7 +143,7 @@ func BenchmarkM_Add(b *testing.B) {
 func BenchmarkM_Has(b *testing.B) {
 	b.ResetTimer()
 	for r := 0; r < b.N; r++ {
-		for i, _ := range wordlist1 {
+		for i := range wordlist1 {
 			bf.Has(wordlist1[i])
 		}
 	}
@@ -122,12 +152,12 @@ func BenchmarkM_Has(b *testing.B) {
 
 func BenchmarkM_AddIfNotHasFALSE(b *testing.B) {
 	bf = New(float64(n*10), float64(7))
-	for i, _ := range wordlist1 {
+	for i := range wordlist1 {
 		bf.Has(wordlist1[i])
 	}
 	b.ResetTimer()
 	for r := 0; r < b.N; r++ {
-		for i, _ := range wordlist1 {
+		for i := range wordlist1 {
 			bf.AddIfNotHas(wordlist1[i])
 		}
 	}
@@ -138,7 +168,7 @@ func BenchmarkM_AddIfNotHasClearTRUE(b *testing.B) {
 
 	b.ResetTimer()
 	for r := 0; r < b.N; r++ {
-		for i, _ := range wordlist1 {
+		for i := range wordlist1 {
 			bf.AddIfNotHas(wordlist1[i])
 		}
 		bf.Clear()
@@ -150,7 +180,7 @@ func BenchmarkM_AddTS(b *testing.B) {
 
 	b.ResetTimer()
 	for r := 0; r < b.N; r++ {
-		for i, _ := range wordlist1 {
+		for i := range wordlist1 {
 			bf.AddTS(wordlist1[i])
 		}
 	}
@@ -160,7 +190,7 @@ func BenchmarkM_AddTS(b *testing.B) {
 func BenchmarkM_HasTS(b *testing.B) {
 	b.ResetTimer()
 	for r := 0; r < b.N; r++ {
-		for i, _ := range wordlist1 {
+		for i := range wordlist1 {
 			bf.HasTS(wordlist1[i])
 		}
 	}
@@ -169,12 +199,12 @@ func BenchmarkM_HasTS(b *testing.B) {
 
 func BenchmarkM_AddIfNotHasTSFALSE(b *testing.B) {
 	bf = New(float64(n*10), float64(7))
-	for i, _ := range wordlist1 {
+	for i := range wordlist1 {
 		bf.Has(wordlist1[i])
 	}
 	b.ResetTimer()
 	for r := 0; r < b.N; r++ {
-		for i, _ := range wordlist1 {
+		for i := range wordlist1 {
 			bf.AddIfNotHasTS(wordlist1[i])
 		}
 	}
@@ -185,7 +215,7 @@ func BenchmarkM_AddIfNotHasTSClearTRUE(b *testing.B) {
 
 	b.ResetTimer()
 	for r := 0; r < b.N; r++ {
-		for i, _ := range wordlist1 {
+		for i := range wordlist1 {
 			bf.AddIfNotHasTS(wordlist1[i])
 		}
 		bf.Clear()
