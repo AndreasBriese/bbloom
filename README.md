@@ -64,6 +64,10 @@ bf = bbloom.New(650000.0, 7.0)
 // add one item
 bf.Add([]byte("butter"))
 
+// Number of elements added is exposed now 
+// Note: ElemNum will not be included in JSON export (for compatability to older version)
+nOfElementsInFilter := bf.ElemNum
+
 // check if item is in the filter
 isIn := bf.Has([]byte("butter"))    // should be true
 isNotIn := bf.Has([]byte("Butter")) // should be false
