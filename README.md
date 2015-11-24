@@ -98,8 +98,8 @@ bf.Mtx.Unlock()
 // restore a bloom filter from storage 
 bfNew := bbloom.JSONUnmarshal(Json)
 
-isIn := bfNew.Has([]byte("butter"))    // should be true
-isNotIn := bfNew.Has([]byte("Butter")) // should be false
+isInNew := bfNew.Has([]byte("butter"))    // should be true
+isNotInNew := bfNew.Has([]byte("Butter")) // should be false
 
 ```
 
