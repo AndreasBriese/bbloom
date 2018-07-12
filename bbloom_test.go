@@ -222,3 +222,64 @@ func BenchmarkM_AddIfNotHasTSClearTRUE(b *testing.B) {
 	}
 
 }
+
+func TestExportAndImport(t *testing.T) {
+	// create and populate a bloom filter
+	bf = New(float64(n*10), float64(7))
+	bf.Add([]byte("hello"))
+	bf.Add([]byte("world"))
+	bf.Add([]byte("new"))
+	bf.Add([]byte("old"))
+
+	// serialize and write
+	fh, err := os.Create("test_export.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	bf.Serialize(fh)
+	fh.Close()
+
+	// read, deserialize, and remove
+	fh, err = os.Open("test_export.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	bf2, err := Deserialize(fh)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fh.Close()
+	os.Remove("test_export.txt")
+
+	// compare
+	if bf2.setLocs != bf.setLocs {
+		log.Fatal("mismatched offsets")
+	}
+
+	if len(bf2.bitset) != len(bf.bitset) {
+		log.Fatal("mismatched data length")
+	}
+
+	fmt.Printf("length of bitset: %v\n", len(bf.bitset))
+
+	for i := 0; i < len(bf2.bitset); i++ {
+		if bf2.bitset[i] != bf.bitset[i] {
+			log.Fatal("data mismatch")
+		}
+	}
+
+	present := []string{"hello", "world", "new", "old"}
+	absent := []string{"mexico", "brazil"}
+
+	for _, entry := range present {
+		if !(bf2.Has([]byte(entry)) && bf.Has([]byte(entry))) {
+			log.Fatal("missing entry")
+		}
+	}
+
+	for _, entry := range absent {
+		if bf2.Has([]byte(entry)) || bf.Has([]byte(entry)) {
+			log.Fatal("false positive")
+		}
+	}
+}
