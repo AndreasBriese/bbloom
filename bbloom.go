@@ -325,7 +325,7 @@ func readContent(r io.Reader) (*[]byte, error) {
 	}
 
 	buffer := make([]byte, length)
-	n, err = r.Read(buffer)
+	n, err = io.ReadFull(r, buffer)
 
 	if err != nil {
 		return nil, errors.Wrapf(err, "error reading message")
