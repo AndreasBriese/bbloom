@@ -27,6 +27,9 @@ import (
 	"math"
 	"sync"
 	"unsafe"
+	"github.com/pkg/errors"
+	"encoding/binary"
+	"io"
 )
 
 // helper
@@ -268,3 +271,120 @@ func (bl Bloom) JSONMarshal() []byte {
 // 	l = hash << bl.sizeExp >> bl.sizeExp
 // 	return l, h
 // }
+
+type ExBbloomFilter struct {
+	Offset uint64
+}
+
+func writeContentByteSize(w io.Writer, length uint64) error {
+	buf := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(buf, length)
+	writtenBytes, err := w.Write(buf)
+	if err != nil {
+		return errors.Wrapf(err, "issue writing message size")
+	}
+	if writtenBytes != binary.MaxVarintLen64 {
+		return errors.Errorf("mismatched number of bytes written for message; expected %v wrote %v", binary.MaxVarintLen64, writtenBytes)
+	}
+
+	return nil
+}
+
+func writeContent(w io.Writer, content *[]byte) error {
+	byteSize := uint64(len(*content))
+	err := writeContentByteSize(w, byteSize)
+	if err != nil {
+		return errors.Wrapf(err, "issue writing blob size")
+	}
+
+	writtenBytes, err := w.Write(*content)
+	if err != nil {
+		return errors.Wrapf(err, "issue writing message")
+	}
+	if uint64(writtenBytes) != byteSize {
+		return errors.Errorf("mismatched number of bytes written for message; expected %v wrote %v", byteSize, writtenBytes)
+	}
+
+	return nil
+}
+
+func readContent(r io.Reader) (*[]byte, error) {
+	buf := make([]byte, binary.MaxVarintLen64)
+	n, err := r.Read(buf)
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "error reading blob length")
+	}
+	if n != binary.MaxVarintLen64 {
+		return nil, errors.Errorf("shorter than expected read for blob length read %v expected %v", n, binary.MaxVarintLen64)
+	}
+
+	length, err := binary.ReadUvarint(bytes.NewBuffer(buf))
+	if err != nil {
+		return nil, errors.Wrapf(err, "error decoding blob length")
+	}
+
+	buffer := make([]byte, length)
+	n, err = io.ReadFull(r, buffer)
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "error reading message")
+	}
+	if uint64(n) != length {
+		return nil, errors.Errorf("shorter than expected read for message read %v expected %v", n, length)
+	}
+
+	return &buffer, nil
+}
+
+func (bl *Bloom) Serialize(w io.Writer) error {
+	// no mutex as the parent interactor should lock for read access
+
+	// write plainfilter json
+	message, err := json.Marshal(ExBbloomFilter{Offset:bl.setLocs})
+	if err != nil {
+		return errors.Wrapf(err, "could not json encode bbloom filter metadata")
+	}
+	writeContent(w, &message)
+
+	// write byte size of underlying bitset
+	filterByteLength := len(bl.bitset)<<3
+	writeContentByteSize(w, uint64(filterByteLength))
+
+	// write underlying bitset
+	ptr := uintptr(unsafe.Pointer(&bl.bitset[0]))
+	for i := 0; i < filterByteLength; i++ {
+		n, err := w.Write([]byte{*(*byte)(unsafe.Pointer(ptr))})
+		if err != nil {
+			return errors.Wrapf(err, "issue writing to file for bbloom filter")
+		}
+		if n != 1 {
+			return errors.Errorf("mismatched number of bytes written for bbloom filter bitset; expected %v wrote %v", 1, n)
+		}
+		ptr++
+	}
+
+	return nil
+}
+
+func Deserialize(r io.Reader) (*Bloom, error) {
+	metadataBuffer, err := readContent(r)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error reading metadata")
+	}
+
+	offsetJson := &ExBbloomFilter{}
+	err = json.Unmarshal(*metadataBuffer, offsetJson)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error decoding bbloom filter metadata json")
+	}
+
+	bitsetBuffer, err := readContent(r)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error reading bitset")
+	}
+
+	bf := NewWithBoolset(bitsetBuffer, offsetJson.Offset)
+
+	return &bf, nil
+}
