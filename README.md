@@ -109,7 +109,7 @@ to work with the bloom filter.
 
 ### why 'fast'? 
 
-It's about 3 times faster than William Fitzgeralds bitset bloom filter https://github.com/willf/bloom . And it is about so fast as my []bool set variant for Boom filters (see https://github.com/AndreasBriese/bloom ) but having a 8times smaller memory footprint: 
+It's about 3 times faster than William Fitzgeralds bitset bloom filter https://github.com/willf/bloom . And it is about as fast as my []bool set variant for Boom filters (see https://github.com/AndreasBriese/bloom ) but having a 8times smaller memory footprint: 
 
 	
 	Bloom filter (filter size 524288, 7 hashlocs)
