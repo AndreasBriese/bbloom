@@ -213,16 +213,14 @@ func (bl *Bloom) Clear() {
 // Set
 // set the bit[idx] of bitsit
 func (bl *Bloom) Set(idx uint64) {
-	ptr := unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3))
-	*(*uint8)(ptr) |= mask[idx%8]
+	*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3))) |= mask[idx%8]
 }
 
 // IsSet
 // check if bit[idx] of bitset is set
 // returns true/false
 func (bl *Bloom) IsSet(idx uint64) bool {
-	ptr := unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3))
-	r := ((*(*uint8)(ptr)) >> (idx % 8)) & 1
+	r := ((*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3)))) >> (idx % 8)) & 1
 	return r == 1
 }
 
