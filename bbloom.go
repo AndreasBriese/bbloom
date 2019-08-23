@@ -65,6 +65,7 @@ func New(params ...float64) (bloomfilter Bloom) {
 	}
 	size, exponent := getSize(uint64(entries))
 	bloomfilter = Bloom{
+		Mtx:     &sync.Mutex{},
 		sizeExp: exponent,
 		size:    size - 1,
 		setLocs: locs,
@@ -79,10 +80,8 @@ func New(params ...float64) (bloomfilter Bloom) {
 // returns the bloomfilter with a bitset populated according to the input []byte
 func NewWithBoolset(bs *[]byte, locs uint64) (bloomfilter Bloom) {
 	bloomfilter = New(float64(len(*bs)<<3), float64(locs))
-	ptr := uintptr(unsafe.Pointer(&bloomfilter.bitset[0]))
-	for _, b := range *bs {
-		*(*uint8)(unsafe.Pointer(ptr)) = b
-		ptr++
+	for i, b := range *bs {
+		*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&bloomfilter.bitset[0])) + uintptr(i))) = b
 	}
 	return bloomfilter
 }
@@ -109,7 +108,7 @@ func JSONUnmarshal(dbData []byte) Bloom {
 //
 // Bloom filter
 type Bloom struct {
-	Mtx     sync.Mutex
+	Mtx     *sync.Mutex
 	ElemNum uint64
 	bitset  []uint64
 	sizeExp uint64
@@ -233,10 +232,8 @@ func (bl Bloom) JSONMarshal() []byte {
 	bloomImEx := bloomJSONImExport{}
 	bloomImEx.SetLocs = uint64(bl.setLocs)
 	bloomImEx.FilterSet = make([]byte, len(bl.bitset)<<3)
-	ptr := uintptr(unsafe.Pointer(&bl.bitset[0]))
 	for i := range bloomImEx.FilterSet {
-		bloomImEx.FilterSet[i] = *(*byte)(unsafe.Pointer(ptr))
-		ptr++
+		bloomImEx.FilterSet[i] = *(*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[0])) + uintptr(i)))
 	}
 	data, err := json.Marshal(bloomImEx)
 	if err != nil {
