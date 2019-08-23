@@ -65,6 +65,7 @@ func New(params ...float64) (bloomfilter Bloom) {
 	}
 	size, exponent := getSize(uint64(entries))
 	bloomfilter = Bloom{
+		Mtx:     &sync.Mutex{},
 		sizeExp: exponent,
 		size:    size - 1,
 		setLocs: locs,
@@ -109,7 +110,7 @@ func JSONUnmarshal(dbData []byte) Bloom {
 //
 // Bloom filter
 type Bloom struct {
-	Mtx     sync.Mutex
+	Mtx     *sync.Mutex
 	ElemNum uint64
 	bitset  []uint64
 	sizeExp uint64
