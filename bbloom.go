@@ -104,7 +104,7 @@ type bloomJSONImExport struct {
 
 // JSONUnmarshal
 // takes JSON-Object (type bloomJSONImExport) as []bytes
-// returns bloom32 / bloom64 object
+// returns Bloom object
 func JSONUnmarshal(dbData []byte) Bloom {
 	bloomImEx := bloomJSONImExport{}
 	json.Unmarshal(dbData, &bloomImEx)
