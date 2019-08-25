@@ -18,6 +18,14 @@
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+// 2019/08/25 code revision to reduce unsafe use
+// Parts are adopted from the fork at ipfs/bbloom after performance rev by
+// Steve Allen (https://github.com/Stebalien)
+// (see https://github.com/ipfs/bbloom/blob/master/bbloom.go)
+// -> func Has
+// -> func set
+// -> func add
+
 package bbloom
 
 import (
@@ -30,7 +38,8 @@ import (
 )
 
 // helper
-var mask = []uint8{1, 2, 4, 8, 16, 32, 64, 128}
+// not needed anymore by Set
+// var mask = []uint8{1, 2, 4, 8, 16, 32, 64, 128}
 
 func getSize(ui64 uint64) (size uint64, exponent uint64) {
 	if ui64 < uint64(512) {
@@ -138,9 +147,9 @@ type Bloom struct {
 // set the bit(s) for entry; Adds an entry to the Bloom filter
 func (bl *Bloom) Add(entry []byte) {
 	l, h := bl.sipHash(entry)
-	for i := uint64(0); i < (*bl).setLocs; i++ {
-		(*bl).Set((h + i*l) & (*bl).size)
-		(*bl).ElemNum++
+	for i := uint64(0); i < bl.setLocs; i++ {
+		bl.set((h + i*l) & bl.size)
+		bl.ElemNum++
 	}
 }
 
@@ -157,13 +166,19 @@ func (bl *Bloom) AddTS(entry []byte) {
 // returns true if the entry was added to the Bloom Filter
 func (bl Bloom) Has(entry []byte) bool {
 	l, h := bl.sipHash(entry)
+	res := true
 	for i := uint64(0); i < bl.setLocs; i++ {
-		switch bl.IsSet((h + i*l) & bl.size) {
-		case false:
-			return false
-		}
+		res = res && bl.isSet((h+i*l)&bl.size)
+		// https://github.com/ipfs/bbloom/commit/84e8303a9bfb37b2658b85982921d15bbb0fecff
+		// // Branching here (early escape) is not worth it
+		// // This is my conclusion from benchmarks
+		// // (prevents loop unrolling)
+		// switch bl.IsSet((h + i*l) & bl.size) {
+		// case false:
+		// 	return false
+		// }
 	}
-	return true
+	return res
 }
 
 // HasTS
@@ -179,10 +194,10 @@ func (bl *Bloom) HasTS(entry []byte) bool {
 // returns true if entry was added
 // returns false if entry was allready registered in the bloomfilter
 func (bl Bloom) AddIfNotHas(entry []byte) (added bool) {
-	if bl.Has(entry[:]) {
+	if bl.Has(entry) {
 		return added
 	}
-	bl.Add(entry[:])
+	bl.Add(entry)
 	return true
 }
 
@@ -193,35 +208,39 @@ func (bl Bloom) AddIfNotHas(entry []byte) (added bool) {
 func (bl *Bloom) AddIfNotHasTS(entry []byte) (added bool) {
 	bl.Mtx.Lock()
 	defer bl.Mtx.Unlock()
-	return bl.AddIfNotHas(entry[:])
+	return bl.AddIfNotHas(entry)
 }
 
 // Size
 // make Bloom filter with as bitset of size sz
 func (bl *Bloom) Size(sz uint64) {
-	(*bl).bitset = make([]uint64, sz>>6)
+	bl.bitset = make([]uint64, sz>>6)
 }
 
 // Clear
 // resets the Bloom filter
 func (bl *Bloom) Clear() {
-	for i, _ := range (*bl).bitset {
-		(*bl).bitset[i] = 0
+	bs := bl.bitset
+	for i := range bs {
+		bs[i] = 0
 	}
 }
 
 // Set
 // set the bit[idx] of bitsit
-func (bl *Bloom) Set(idx uint64) {
-	*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3))) |= mask[idx%8]
+func (bl *Bloom) set(idx uint64) {
+	// ommit unsafe
+	// 	*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3))) |= mask[idx%8]
+	bl.bitset[idx>>6] |= 1 << (idx % 64)
 }
 
 // IsSet
 // check if bit[idx] of bitset is set
 // returns true/false
-func (bl *Bloom) IsSet(idx uint64) bool {
-	r := ((*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3)))) >> (idx % 8)) & 1
-	return r == 1
+func (bl *Bloom) isSet(idx uint64) bool {
+	// ommit unsafe
+	// return (((*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&bl.bitset[idx>>6])) + uintptr((idx%64)>>3)))) >> (idx % 8)) & 1) == 1
+	return bl.bitset[idx>>6]&(1<<(idx%64)) != 0
 }
 
 // JSONMarshal
