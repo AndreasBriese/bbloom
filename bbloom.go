@@ -88,8 +88,8 @@ func New(params ...float64) (bloomfilter Bloom) {
 // takes a []byte slice and number of locs per entry
 // returns the bloomfilter with a bitset populated according to the input []byte
 func NewWithBoolset(bs *[]byte, locs uint64) (bloomfilter Bloom) {
-	bloomfilter = New(float64(len(*bs)<<3), float64(locs))
-	for i, b := range *bs {
+	bloomfilter = New(float64(len(bs)<<3), float64(locs))
+	for i, b := range bs {
 		*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&bloomfilter.bitset[0])) + uintptr(i))) = b
 	}
 	return bloomfilter
@@ -158,7 +158,7 @@ func (bl *Bloom) Add(entry []byte) {
 func (bl *Bloom) AddTS(entry []byte) {
 	bl.Mtx.Lock()
 	defer bl.Mtx.Unlock()
-	bl.Add(entry[:])
+	bl.Add(entry)
 }
 
 // Has
@@ -186,7 +186,7 @@ func (bl Bloom) Has(entry []byte) bool {
 func (bl *Bloom) HasTS(entry []byte) bool {
 	bl.Mtx.Lock()
 	defer bl.Mtx.Unlock()
-	return bl.Has(entry[:])
+	return bl.Has(entry)
 }
 
 // AddIfNotHas
