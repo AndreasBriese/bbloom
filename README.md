@@ -1,13 +1,13 @@
 ## bbloom: a bitset Bloom filter for go/golang
-===
 
-[![Build Status](https://travis-ci.org/AndreasBriese/bbloom.png?branch=master)](http://travis-ci.org/AndreasBriese/bbloom)
+[![Go Reference](https://pkg.go.dev/badge/github.com/AndreasBriese/bbloom.svg)](https://pkg.go.dev/github.com/AndreasBriese/bbloom)
+[![Go](https://github.com/AndreasBriese/bbloom/actions/workflows/go.yml/badge.svg)](https://github.com/AndreasBriese/bbloom/actions/workflows/go.yml)
 
 package implements a fast bloom filter with real 'bitset' and JSONMarshal/JSONUnmarshal to store/reload the Bloom filter. 
 
 NOTE: the package uses unsafe.Pointer to set and read the bits from the bitset. If you're uncomfortable with using the unsafe package, please consider using my bloom filter package at github.com/AndreasBriese/bloom
 
-===
+---
 
 changelog 11/2015: new thread safe methods AddTS(), HasTS(), AddIfNotHasTS() following a suggestion from Srdjan Marinovic (github @a-little-srdjan), who used this to code a bloomfilter cache.  
 
@@ -20,13 +20,13 @@ Found sipHash (SipHash-2-4, a fast short-input PRF created by Jean-Philippe Auma
 
 Minimum hashset size is: 512 ([4]uint64; will be set automatically). 
 
-###install
+### Install
 
 ```sh
 go get github.com/AndreasBriese/bbloom
 ```
 
-###test
+### Test
 + change to folder ../bbloom 
 + create wordlist in file "words.txt" (you might use `python permut.py`)
 + run 'go test -bench=.' within the folder
@@ -39,7 +39,7 @@ go test -bench=.
 
 using go's testing framework now (have in mind that the op timing is related to 65536 operations of Add, Has, AddIfNotHas respectively)
 
-### usage
+### Usage
 
 after installation add
 
